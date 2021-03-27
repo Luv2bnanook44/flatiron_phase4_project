@@ -1,5 +1,5 @@
 # Big X-ray Kaggle Dataset
-/data
+/data/chest_xray
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
