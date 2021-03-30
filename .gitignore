@@ -1,5 +1,6 @@
 # Big X-ray Kaggle Dataset
 /data
+/data_mirror
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
