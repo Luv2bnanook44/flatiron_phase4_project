@@ -1,42 +1,216 @@
-# package that can take in a list of directory paths, and can perform number of preprocessing and modeling steps, including building and evaluating a neural network.
+# general imports
+import matplotlib.pyplot as plt
+%matplotlib inline
+import seaborn as sns
+import numpy as np
+
+# image manipulation
+from PIL import Image as im
+import os
+from keras.preprocessing.image import load_img, ImageDataGenerator
+
+# keras/tensorflow
+from keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.models import Sequential
+from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
+
+# Class NeuralNet
 
 class NeuralNet():
-
+    '''
+    Takes in ___ and provides a slew of methods to preprocess data, visualize data, model data, and tune model.
+    '''
     def __init__():
-        self.train = train
-	self.test = test
-	self.val = val
+        
+        # Directory paths
+        
+            # binary
+        self.binary_train_path = '/chest_xray/train/'
+        self.binary_test_path = '/chest_xray/test/'
+        self.binary_train_pneumonia_path = '/chest_xray/train/PNEUMONIA/'
+        self.binary_train_normal_path = '/chest_xray/train/NORMAL/'
+        self.binary_test_pneumonia_path = '/chest_xray/test/PNEUMONIA/'
+        self.binary_test_normal_path = '/chest_xray/test/NORMAL/'
+            # ternary
+        self.ternary_train_path = '/chest_xray/chest_xray_ternary/train/'
+        self.ternary_test_path = '/chest_xray/chest_xray_ternary/test/'
+        self.ternary_train_bacterial_path = '/chest_xray/chest_xray_ternary/train/BACTERIAL/'
+        self.ternary_train_viral_path = '/chest_xray/chest_xray_ternary/train/VIRAL/'
+        self.ternary_train_normal_path = '/chest_xray/chest_xray_ternary/train/NORMAL/'
+        self.ternary_test_bacterial_path = '/chest_xray/chest_xray_ternary/test/BACTERIAL/'
+        self.ternary_test_viral_path = '/chest_xray/chest_xray_ternary/test/VIRAL/'
+        self.ternary_test_normal_path = '/chest_xray/chest_xray_ternary/test/NORMAL/'
+        
+        # List of images
+        self.img_binary_normal = None
+	    self.img_binary_pneumonia = None
+	    self.img_ternary_normal = None
+        self.img_ternary_bacterial = None
+        self.img_ternary_viral = None
+        
+        # Pandas Dataframe of images and info
+        self.df_ = None
+        
+        # List of array-formatted images
+        self.array_binary_normal = None
+	    self.array_binary_pneumonia = None
+	    self.array_ternary_normal = None
+        self.array_ternary_bacterial = None
+        self.array_ternary_viral = None
+        
+        # List of model data
+        self.binary_train = None
+        self.binary_labels = None
+        self.binary_test = None
+        self.ternary_train = None
+        self.ternary_labels = None
+        self.ternary_test = None
 
-    def get_images():
+    def preprocess(folder='data'):
         '''
-        Takes in ___ and returns list of images files to use as visuals 
+        Works like a fit method, takes in name of folder (str) that stores data and then stores in class the following:
+        - image list (PIL.Image)
+        - array list
+        - sum list
+        - data to be inserted into model
+        
+        NOTE: MUST have directory structure as follows...
+        
+        folder
+            >chest_xray
+                >train
+                    >PNEUMONIA
+                    >NORMAL
+                >test
+                    >NORMAL
+                    >PNEUMONIA
+                >chest_xray_ternary
+                    >train
+                        >NORMAL
+                        >PNEUMONIA
+                            >BACTERIAL
+                            >VIRAL
+                    >test
+                        >NORMAL
+                        >PNEUMONIA
+                            >BACTERIAL
+                            >VIRAL
         '''
-        return None
+        # Binary data
+        train_pneumonia=os.listdir(folder+self.binary_train_pneumonia_path)
+        train_normal=os.listdir(folder+self.binary_train_normal_path)
+        test_normal=os.listdir(folder+self.binary_test_normal_path)
+        test_pneumonia=os.listdir(folder+self.binary_test_pneumonia_path)
+        
+        # Ternary data
+        train_bacterial=os.listdir(folder+self.ternary_train_bacterial_path)
+        train_viral=os.listdir(folder+self.ternary_train_viral_path)
+        train_tern_normal=os.listdir(folder+self.ternary_train_normal_path)
+        test_tern_normal=os.listdir(folder+self.ternary_test_normal_path)
+        test_bacterial=os.listdir(folder+self.ternary_test_bacterial_path)
+        test_viral=os.listdir(folder+self.ternary_test_viral_path)
+        
+        print('Data Loaded from folder(s).')
+        
+        #
+        self.array_binary_normal = None
+	    self.array_binary_pneumonia = None
+	    self.array_ternary_normal = None
+        self.array_ternary_bacterial = None
+        self.array_ternary_viral = None
+        
+        # Generate dataframe with images, label info, and grayscale sums
+        
+        train_bacterial_resized=pd.DataFrame()
+        train_bacterial_resized['label'] = 'bacterial'
+        train_bacterial_resized['train'] = 1
+        train_bacterial_resized['gs_sum'] = 
+        
+        train_viral_resized=pd.DataFrame()
+        train_viral_resized['label'] = 'viral'
+        train_viral_resized['train'] = 1
+        train_viral_resized['gs_sum'] =
+        
+        train_normal_resized=pd.DataFrame()
+        train_normal_resized['label'] = 'normal'
+        train_normal_resized['train'] = 1
+        train_normal_resized['gs_sum'] =
+        
+        test_normal_resized=pd.DataFrame()
+        test_normal_resized['label'] = 'normal'
+        test_normal_resized['train'] = 0
+        test_normal_resized['gs_sum'] =
+        
+        test_bacterial_resized=pd.DataFrame()
+        test_bacterial_resized['label'] = 'bacterial'
+        test_bacterial_resized['train'] = 0 
+        test_bacterial_resized['gs_sum'] =
+        
+        test_viral_resized=pd.DataFrame()
+        test_viral_resized['label'] = 'viral'
+        test_viral_resized['train'] = 0
+        test_viral_resized['gs_sum'] =
+        
+        # Combine all the dfs
+        self.df_ = pd.concat([train_bacterial_resized, train_viral_resized, train_normal_resized, 
+                              test_bacterial_resized, test_viral_resized, test_normal_resized], axis=0)
+        print('Stored dataframe of data in .df_ attribute.')
+        
+        # Generate images for modeling (batch size matches length of full dataset to allow for adjustable batch sizes later
+        
+        # BINARY
+        binary_test_gen = ImageDataGenerator(rescale = 1/255.).flow_from_directory(test_path,
+                                            target_size=(224, 224),
+                                            batch_size=624,
+                                            color_mode = 'grayscale',                        
+                                            class_mode='binary')
 
-    def img_to_array():
-        '''
-        Takes in ___ and returns a converted list of image arrays.
-        '''
-        return None
+        
+        binary_train_gen = ImageDataGenerator(rescale = 1/255.).flow_from_directory(full_train_path,
+                                            target_size=(224, 224),
+                                            batch_size=5232,
+                                            color_mode = 'grayscale',                        
+                                            class_mode='binary')
+        
+        # TERNARY
+         ternary_test_gen = ImageDataGenerator(rescale = 1/255.).flow_from_directory(test_path,
+                                            target_size=(224, 224),
+                                            batch_size=624,
+                                            color_mode = 'grayscale',                        
+                                            class_mode='binary')
 
-    def augment_data():
-        '''
-        Takes in images and returns a dataset with balanced classes (balance ratio can be adjusted as a parameter). Flips/rotates/zooms out data as specified.
-        '''
-        return None
-
-
-    def get_model_data():
-        '''
-        Takes in _____ and returns data in a shape that is suitable for tensorflow. Must specify ternary parameter to adjust the assignment of classes.
-        '''
-        return None
+        
+        ternary_train_gen = ImageDataGenerator(rescale = 1/255.).flow_from_directory(full_train_path,
+                                            target_size=(224, 224),
+                                            batch_size=5232,
+                                            color_mode = 'grayscale',                        
+                                            class_mode='binary')
+        
+        # Isolating data, reshaping for model
+        
+        # BINARY TRAIN
+        binary_train_images, binary_train_labels = next(binary_train_gen)
+        binary_train_images = full_train_images.reshape(binary_train_images.shape[0], -1)
+        binary_train_labels = np.reshape(binary_train_labels[:], (5232,1))
+        # BINARY TEST
+        binary_test_images, binary_test_labels = next(ternary_test_gen)
+        binary_test_images = binary_test_images.reshape(binary_test_images.shape[0], -1)
+        binary_test_labels = np.reshape(binary_test_labels[:], (624,1))
+        
+        # TERNARY TRAIN
+        ternary_train_images, ternary_train_labels = next(ternary_train_gen)
+        ternary_train_images = ternary_train_images.reshape(ternary_train_images.shape[0], -1)
+        ternary_train_labels = np.reshape(ternary_train_labels[:], (5232,1))
+        # TERNARY TEST
+        ternary_test_images, ternary_test_labels = next(ternary_test_gen)
+        ternary_test_images = ternary_test_images.reshape(ternary_test_images.shape[0], -1)
+        ternary_test_labels = np.reshape(ternary_test_labels[:], (624,1))
 
     def build_model():
         '''
         Takes in dataset with correct shape, returns None, but stores fit model object in the class. If ternary=True, then builds model that distinguishes bacteria vs viral pneumonia.
         '''
-	return None
+        return None
 
     def get_results():
         '''
@@ -49,24 +223,4 @@ class NeuralNet():
         Takes in _____ and launches Tensorboard interface AND/OR returns images taken for previously built model if user does not want to launch interface.
         '''
         return None
-
-# Class EDA inherits values from the Neural Net class to build graphs/analyze/visualize data.
-
-class EDA(NeuralNet):
-
-    def __init__():
-        '''Have to figure out how inheritance works again '''
-
-    def class_distribution():
-        '''
-        Takes in dataset and returns graph showing class imbalance for ternary and binary versions of the data.
-        '''
-        return None
-
-    def grayscale_sum_dist():
-        '''
-        Takes in image data (in array form) and returns histogram of "blackness" levels in normal vs pneumonia"; also returns specific images from key parts of distribution to use as examples (perhaps stored as attributes??)
-        '''
-        return None
-
 
