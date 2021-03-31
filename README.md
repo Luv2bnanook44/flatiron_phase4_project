@@ -21,7 +21,7 @@ Our methods involve creating two convolutional nueral networks, one for binary c
 
 
 ## Results
-
+![conf](./img/conf.JPG)
 
 ## Conclusions
 Final Model
