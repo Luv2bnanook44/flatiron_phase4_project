@@ -36,14 +36,10 @@ Final Model
 
 ## Repository Structure
 ```
-├── data - contains information on obtaining the data set
 ├── img
 ├── notebooks
 ├── src
-  ├── transformers.py
-  ├── wtpts_env.yml
-├── Phase_3_Project_Rachel-binary.ipynb
-├── Phase_3_Project_Rachel-binary_merged.ipynb
+  ├── .py
+  ├──.yml
 ├── README.md
-├── Tanzanian_Waterpoints.ipynb
-└── svitlana_first_eda.ipynb
+└── final_notebook.ipynb
