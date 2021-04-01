@@ -13,9 +13,18 @@ from keras.preprocessing.image import load_img, ImageDataGenerator
 # keras/tensorflow
 from keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
+from tensorflow.keras import metrics
+from keras.layers.advanced_activations import LeakyReLU
+from tensorflow.random import set_seed
 
-# Class NeuralNet
+# Diagnostics/Analysis
+from sklearn.metrics import roc_curve, auc, confusion_matrix
+
+# Set global seed
+set_seed(42)
+
+####################### Class NeuralNet ########################
 
 class NeuralNet():
     '''
@@ -78,6 +87,11 @@ class NeuralNet():
         self.ternary_train_labels = None
         self.ternary_test_images = None
         self.ternary_test_labels = None
+        
+        # Model
+        self.history = None
+        self.model = None
+        self.predictions = None
 
     def preprocess(self, folder='data', rotation_range=0.4, zoom_range=0.4):
         '''
@@ -306,7 +320,7 @@ class NeuralNet():
 
         fig.suptitle('Distribution of Gray Scale Sums', size=25)
         
-    def dark_vs_light(self, graph_number)
+    def dark_vs_light(self, graph_number):
         '''Takes in either 1 or 2 (int) to show different comparisons of lightest and darkest images in the dataset'''
         
         if graph_number not in [1,2]:
@@ -356,7 +370,7 @@ class NeuralNet():
                         d_or_l = 'Lightest'
 
                     ax[r][c].imshow(graphs[c]['image'].values[0], cmap='gray', vmin=0, vmax=255)
-                    ax[r][c].set_title(f'{d_or_l} X-ray Chest Scan\nGS-Score = {scores[c]}\n{labels[r].upper()}', size=15)
+                    ax[r][c].set_title(f'{d_or_l} X-ray Chest Scan\nGS-Score = {scores[c]}\n{labels[r].capitalize()}', size=15)
                     ax[r][c].grid(False)
 
             plt.subplots_adjust(left=0.125,
@@ -368,17 +382,105 @@ class NeuralNet():
             
             
             
-    def build_model(self):
+    def build_model(self, layers, ternary, optimizer, loss, metrics, epochs, batch_size, validation_split):
         '''
-        Takes in dataset with correct shape, returns None, but stores fit model object in the class. If ternary=True, then builds model that distinguishes bacteria vs viral pneumonia.
+        Uses in model-ready dataset attribute, returns None, but stores fit model object in the class. If ternary=True, then builds model that distinguishes bacteria vs viral pneumonia.
+        First layer of network must contain input shape.
+        
+        params:
+        --------
+        :layers: a list of step functions in desired order, with desired specifications (Ex: [Dense(12, activation='relu', input_shape=(50176,), MaxPooling2D((2, 2)), Dense(1, activation='softmax')])
+        :ternary: bool, whether or not you are building a binary/ternary classifier.
+        :optimizer: choose one of the following (str): [
+        :loss: choose one of the following (str): [
+        :metrics: choose from the following (tuple): [
+        :epochs: int; number of big-boy rounds.
+        :batch_size: int; number of bony cliques.
+        :validation_split: float; proportion of training data to be siphoned off to use for validation.
         '''
-        return None
+        self.model = Sequential()
+        
+        for layer in layers:
+            model.add(layer)
+        
+        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+        
+        if ternary == False:
+            self.history = model.fit(self.binary_train_images,
+                                     self.binary_train_labels,
+                                     epochs = epochs,
+                                     batch_size = batch_size,
+                                     validation_split = validation_split)
+                                     
+        elif ternary == True:
+            self.history = model.fit(self.ternary_train_images,
+                                     self.ternary_train_labels,
+                                     epochs = epochs,
+                                     batch_size = batch_size,
+                                     validation_split = validation_split)
+        else:
+            print("Must enter either bool depending on desired classifier: binary or ternary.")
 
-    def get_results(self):
+    def get_results(self, graph_name, model_name):
         '''
         Takes in model and returns confusion matrix, accuracy, summary table; diagnostics can be chosen, but by default all are returned. If user does not want to wait forever for a model to build, if a param is set to True, will return summary of previously built model. Also should have ability to return graph of loss and accuracy/recall growth across epochs. Don't know if this will have to be segmented via attributes.
+        
+        Params:
+        ---------
+        :graph_name: str - one of the following - 'acc_recall', 'confusion_matrix', 'loss_roc'
+        :model_name: str - name of model (Ex: 'FSM')
         '''
-        return None
+        if graph_name == 'acc_recall':
+            model_epochs = self.history.epoch
+            model_recall_train = self.history.history['recall']
+            model_recall_val = self.history.history['val_recall']
+            model_accuracy_train = self.history.history['accuracy']
+            model_accuracy_val = self.history.history['val_accuracy']
+
+            fig, (ax1, ax2) = plt.subplots(ncols=2, figsize = (13,6))
+
+            ax1.plot(model_epochs, model_accuracy_train, label = 'Training Data', lw=3)
+            ax1.plot(model_epochs, model_accuracy_val, linestyle = '--', label = 'Validation Data', lw=3)
+            ax1.set_xlabel("Epoch", size=15)
+            ax1.set_ylabel("Accuracy", size=15)
+            ax1.set_title('Accuracy\n10 Epochs')
+            ax1.legend();
+
+            ax2.plot(model_epochs, model_recall_train, label = 'Training Data', lw=3)
+            ax2.plot(model_epochs, model_recall_val, linestyle = '--', label = 'Validation Data', lw=3)
+            ax2.set_xlabel("Epoch", size=15)
+            ax2.set_ylabel("Recall", size=15)
+            ax2.set_title('Recall\n10 Epochs')
+            ax2.legend();
+
+            plt.suptitle(f'{model_name} Diagnostics', size=25)
+        
+        elif graph_name == 'loss_roc':
+            self.predictions = cnn.model.predict(cnn.binary_test_images).ravel()
+            y_true = cnn.binary_test_labels
+            fpr, tpr, thresholds = roc_curve(y_true, y_pred)
+            auc = auc(fpr, tpr)
+            
+            fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(13,6))
+
+            model_epochs = cnn.history.epoch
+            train_loss = cnn.history.history['loss']
+            val_loss = cnn.history.history['val_loss']
+
+            ax1.plot(model_epochs, train_loss, label = 'Training Data', lw=3)
+            ax1.plot(model_epochs, val_loss, linestyle = '--', label = 'Validation Data', lw=3)
+            ax1.set_title('Loss', size=15)
+            ax1.set_xlabel('Epoch', size=15)
+            ax1.set_ylabel('Loss', size=15)
+            ax1.legend(prop={"size":15})
+
+            ax2.plot(fpr, tpr, label = f'Training Data: AUC = {auc}', lw=3)
+            ax2.set_title('ROC Curve', size=15)
+            ax2.set_xlabel('False Positive Rate', size=15)
+            ax2.set_ylabel('False Negative Rate', size=15)
+            ax2.legend(prop={"size":15})
+
+            plt.suptitle(f'{model_name} Diagnostics', size=25)
 
     def tensorboard(self):
         '''
