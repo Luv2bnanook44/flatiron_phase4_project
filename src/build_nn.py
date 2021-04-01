@@ -91,7 +91,7 @@ class NeuralNet():
         # Model
         self.history = None
         self.model = None
-        self.predictions = None
+        self.confusion_matrix = None
 
     def preprocess(self, folder='data', rotation_range=0.4, zoom_range=0.4):
         '''
@@ -421,7 +421,7 @@ class NeuralNet():
         else:
             print("Must enter either bool depending on desired classifier: binary or ternary.")
 
-    def get_results(self, graph_name, model_name):
+    def get_results(self, graph_name, model_name, y_pred, y_true):
         '''
         Takes in model and returns confusion matrix, accuracy, summary table; diagnostics can be chosen, but by default all are returned. If user does not want to wait forever for a model to build, if a param is set to True, will return summary of previously built model. Also should have ability to return graph of loss and accuracy/recall growth across epochs. Don't know if this will have to be segmented via attributes.
         
@@ -456,16 +456,15 @@ class NeuralNet():
             plt.suptitle(f'{model_name} Diagnostics', size=25)
         
         elif graph_name == 'loss_roc':
-            self.predictions = cnn.model.predict(cnn.binary_test_images).ravel()
-            y_true = cnn.binary_test_labels
+            
             fpr, tpr, thresholds = roc_curve(y_true, y_pred)
-            auc = auc(fpr, tpr)
+            auc = auc(fpr, tpr).round(2)
             
             fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(13,6))
 
-            model_epochs = cnn.history.epoch
-            train_loss = cnn.history.history['loss']
-            val_loss = cnn.history.history['val_loss']
+            model_epochs = self.history.epoch
+            train_loss = self.history.history['loss']
+            val_loss = self.history.history['val_loss']
 
             ax1.plot(model_epochs, train_loss, label = 'Training Data', lw=3)
             ax1.plot(model_epochs, val_loss, linestyle = '--', label = 'Validation Data', lw=3)
@@ -474,13 +473,24 @@ class NeuralNet():
             ax1.set_ylabel('Loss', size=15)
             ax1.legend(prop={"size":15})
 
-            ax2.plot(fpr, tpr, label = f'Training Data: AUC = {auc}', lw=3)
+            ax2.plot(fpr, tpr, label = f'AUC = {auc}', lw=3)
             ax2.set_title('ROC Curve', size=15)
             ax2.set_xlabel('False Positive Rate', size=15)
             ax2.set_ylabel('False Negative Rate', size=15)
             ax2.legend(prop={"size":15})
 
             plt.suptitle(f'{model_name} Diagnostics', size=25)
+        elif graph_name == 'confusion_matrix':
+            fig, ax = plt.subplots(figsize=(6,5))
+
+            data = confusion_matrix(y_true, y_pred)
+            sns.heatmap(data, annot=True, ax=ax)
+            ax.set_xlabel('Predicted Label')
+            ax.set_ylabel('True Label')
+            ax.set_title(f'{model_name} Confusion Matrix', size=20)
+
+        else:
+            print("Must choose one of the following graphs: 'loss_roc', 'acc_recall', 'confusion_matrix'")
 
     def tensorboard(self):
         '''
