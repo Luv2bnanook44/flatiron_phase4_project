@@ -22,6 +22,19 @@ This is a visual breakdown of our data where the green line indicates the split 
 ## Methods
 Our methods involve creating a binary classification convolutional nueral networks. We go through an iterative model process where the model is tweaked after each cycle to perform better than the last. Our target is reducing false negatives and we evaluate that success based on our recall, loss and accuracy metrics. 
 
+##Modeling  
+The final model iteration was a Convolutional Neural Net with the following architecture:  
+```Conv2D(32, (3, 3), activation='tanh',input_shape=(224 , 224, 1)), //convolutional input layer with hyperbolic tangent activation function
+            MaxPooling2D((2, 2)), //pooling layer
+            Conv2D(32, (4, 4), activation='relu'), //convolutional layer with a 4x4 matrix transformer
+            MaxPooling2D((2, 2), padding = 'same'), //pooling layer with padding
+            LeakyReLU(), //leaky ReLu activation layer
+            MaxPooling2D((2, 2), padding = 'same'), //pooling layer with padding
+            Dropout(.3), //30% dropout layer 
+            Flatten(), //flattening layer
+	    Dense(128, activation = 'relu') //Densely-connected layer with 128 neurons and ReLu activation
+            Dense(64, activation='relu'), //Densely-connected layer with 64 neurons and ReLu activation
+            Dense(1, activation='sigmoid')] //output layer with sigmoid activation```
 
 ## Results
 ![conf](./img/conf.JPG)
@@ -34,10 +47,14 @@ F1 score - 83%
 
 Has only four false negatives
 
-## Conclusions
-Final Model
+![final_performance](./img/final_model_performance.png)
 
-        
+
+## Conclusions
+Final Model  
+The final model performed well at maximizing recall but skewed heavily towards false positive predictions.  
+It successfully achieved our goals of a low false negative count, but there is still a potential cost of misdiagnosing healthy patients, both to the healthcare provider as well as to the patient and their family in the form of time and emotional labor.  
+We would like to continue iterating on the model to reduce the number of positive class predictions.  
  
 
 ### Next Steps
@@ -52,6 +69,7 @@ Final Model
 ├── src
   ├── __init__.py
   ├── build_nn.py
+|
 ├──environment.yml
 ├── README.md
 └── final_notebook.ipynb
