@@ -50,7 +50,8 @@ Final Model
 ├── img
 ├── notebooks
 ├── src
-  ├── .py
-  ├──.yml
+  ├── __init__.py
+  ├── build_nn.py
+├──environment.yml
 ├── README.md
 └── final_notebook.ipynb
