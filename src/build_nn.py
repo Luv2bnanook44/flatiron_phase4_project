@@ -19,8 +19,12 @@ from keras.layers.advanced_activations import LeakyReLU
 from tensorflow.random import set_seed
 
 # Diagnostics/Analysis
-from sklearn.metrics import roc_curve, auc, confusion_matrix
-from tensorflow.keras.callbacks import LambdaCallback
+from sklearn.metrics import roc_curve, auc
+from tensorflow.math import confusion_matrix
+from tensorflow.keras.callbacks import LambdaCallback, TensorBoard
+from lime import lime_image
+from skimage.segmentation import mark_boundaries
+import datetime
 
 # Set global seed
 set_seed(42)
@@ -61,6 +65,21 @@ class NeuralNet():
         
         # Pandas Dataframe of images and info
         self.df_ = None
+        
+        # Image gens
+        self.binary_train_gen = None
+        self.binary_test_gen = None
+        self.ternary_train_gen = None
+        self.ternary_test_gen = None
+        
+       
+        # List of array-formatted images
+        self.file_train_normal = []
+        self.file_train_bacterial = []
+        self.file_train_viral = []
+        self.file_test_normal = []
+        self.file_test_bacterial = []
+        self.file_test_viral = []
         
         # List of array-formatted images
         self.array_train_normal = []
@@ -144,6 +163,9 @@ class NeuralNet():
         
         # Create dataframes for each permutation of image
         
+        filenames = [self.file_train_bacterial, self.file_train_viral, self.file_train_normal,
+                    self.file_test_bacterial, self.file_test_viral, self.file_test_normal]
+        
         arrays = [self.array_train_bacterial, self.array_train_viral, self.array_train_normal,
                   self.array_test_bacterial, self.array_test_viral, self.array_test_normal]
         
@@ -161,6 +183,7 @@ class NeuralNet():
         
         for i in range(len(dirs)):
             for img in dirs[i]:
+                filenames[i].append(img)
                 image = im.open(folder+paths[i]+img)
                 new_img = image.resize((224,224))
                 images[i].append(new_img)
@@ -176,36 +199,42 @@ class NeuralNet():
         train_bacterial_resized['train'] = 1
         train_bacterial_resized['test'] = 0
         train_bacterial_resized['gs_sum'] = self.sums_train_bacterial
+        train_bacterial_resized['filename'] = self.file_train_bacterial
         
         train_viral_resized=pd.DataFrame(images[1], columns=['image'])
         train_viral_resized['label'] = 'viral'
         train_viral_resized['train'] = 1
         train_viral_resized['test'] = 0
         train_viral_resized['gs_sum'] = self.sums_train_viral
+        train_viral_resized['filename'] = self.file_train_viral
         
         train_normal_resized=pd.DataFrame(images[2], columns=['image'])
         train_normal_resized['label'] = 'normal'
         train_normal_resized['train'] = 1
         train_normal_resized['test'] = 0
         train_normal_resized['gs_sum'] = self.sums_train_normal
+        train_normal_resized['filename'] = self.file_train_normal
         
         test_bacterial_resized=pd.DataFrame(images[3], columns=['image'])
         test_bacterial_resized['label'] = 'bacterial'
         test_bacterial_resized['train'] = 0 
         test_bacterial_resized['test'] = 1
         test_bacterial_resized['gs_sum'] = self.sums_test_bacterial
+        test_bacterial_resized['filename'] = self.file_test_bacterial
         
         test_viral_resized=pd.DataFrame(images[4], columns=['image'])
         test_viral_resized['label'] = 'viral'
         test_viral_resized['train'] = 0
         test_viral_resized['test'] = 1
         test_viral_resized['gs_sum'] = self.sums_test_viral
+        test_viral_resized['filename'] = self.file_test_viral
         
         test_normal_resized=pd.DataFrame(images[5], columns=['image'])
         test_normal_resized['label'] = 'normal'
         test_normal_resized['train'] = 0
         test_normal_resized['test'] = 1
         test_normal_resized['gs_sum'] = self.sums_test_normal
+        test_normal_resized['filename'] = self.file_test_normal
         
         # Combine all the dfs
         self.df_ = pd.concat([train_bacterial_resized, train_viral_resized, train_normal_resized, 
@@ -218,58 +247,55 @@ class NeuralNet():
         test_batch_size = len(self.img_test_normal)+len(self.img_test_bacterial)+len(self.img_test_viral)
         
         # BINARY
-        binary_test_gen = ImageDataGenerator(rescale = 1/255.).flow_from_directory(folder+self.binary_test_path,
+        self.binary_test_gen = ImageDataGenerator(rescale = 1/255.).flow_from_directory(folder+self.binary_test_path,
                                             target_size=(224, 224),
-                                            batch_size=test_batch_size,
-                                            color_mode = 'grayscale',                        
+                                            batch_size=test_batch_size,                       
                                             class_mode='binary')
 
         
-        binary_train_gen = ImageDataGenerator(rescale = 1/255., horizontal_flip=True, \
+        self.binary_train_gen = ImageDataGenerator(rescale = 1/255., horizontal_flip=True, \
                                               rotation_range=rotation_range, \
                                               zoom_range=zoom_range).flow_from_directory(folder+self.binary_train_path,
                                                                                          target_size=(224, 224),
-                                                                                         batch_size=train_batch_size,
-                                                                                         color_mode = 'grayscale',                 
+                                                                                         batch_size=train_batch_size,   
                                                                                          class_mode='binary')
         
         # TERNARY
-        ternary_test_gen = ImageDataGenerator(rescale = 1/255.).flow_from_directory(folder+self.ternary_test_path,
+        self.ternary_test_gen = ImageDataGenerator(rescale = 1/255.).flow_from_directory(folder+self.ternary_test_path,
                                             target_size=(224, 224),
-                                            batch_size=test_batch_size,
-                                            color_mode = 'grayscale',                        
+                                            batch_size=test_batch_size,                      
                                             class_mode='categorical')
 
         
-        ternary_train_gen = ImageDataGenerator(rescale = 1/255., horizontal_flip=True, \
+        self.ternary_train_gen = ImageDataGenerator(rescale = 1/255., horizontal_flip=True, \
                                                rotation_range=rotation_range, \
                                                zoom_range=zoom_range).flow_from_directory(folder+self.ternary_train_path,
                                                                                           target_size=(224, 224),
-                                                                                          batch_size=train_batch_size,
-                                                                                          color_mode = 'grayscale',               
+                                                                                          batch_size=train_batch_size,            
                                                                                           class_mode='categorical')
         
         # Isolating data, reshaping for model
         
         # BINARY TRAIN
-        self.binary_train_images, self.binary_train_labels = next(binary_train_gen)
+        self.binary_train_images, self.binary_train_labels = next(self.binary_train_gen)
 #         self.binary_train_images = binary_train_images.reshape(binary_train_images.shape[0], -1)
 #         self.binary_train_labels = np.reshape(binary_train_labels[:], (5232,1))
         # BINARY TEST
-        self.binary_test_images, self.binary_test_labels = next(binary_test_gen)
+        self.binary_test_images, self.binary_test_labels = next(self.binary_test_gen)
 #         self.binary_test_images = binary_test_images.reshape(binary_test_images.shape[0], -1)
 #         self.binary_test_labels = np.reshape(binary_test_labels[:], (624,1))
         
         # TERNARY TRAIN
-        self.ternary_train_images, self.ternary_train_labels = next(ternary_train_gen)
+        self.ternary_train_images, self.ternary_train_labels = next(self.ternary_train_gen)
 #         self.ternary_train_images = ternary_train_images.reshape(ternary_train_images.shape[0], -1)
 #         self.ternary_train_labels = ternary_train_labels[:,0].reshape(-1,1)
         # TERNARY TEST
-        self.ternary_test_images, self.ternary_test_labels = next(ternary_test_gen)
+        self.ternary_test_images, self.ternary_test_labels = next(self.ternary_test_gen)
 #         self.ternary_test_images = ternary_test_images.reshape(ternary_test_images.shape[0], -1)
 #         self.ternary_test_labels = ternary_test_labels[:,0].reshape(-1,1)
                                                       
-        print('Data is ready for modeling.\n\nYou can check out the preprocessed data with the following attributes: \n\n.binary_test_images\n.binary_train_images\n.binary_train_labels\n.ternary_train_images\n.ternary_test_images\n.ternary_train_labels\netc.')                                                
+        print('Data is ready for modeling.\n\nYou can check out the preprocessed data with the following attributes: \n\n.binary_test_images\n.binary_train_images\n.binary_train_labels\n.ternary_train_images\n.ternary_test_images\n.ternary_train_labels\netc.') 
+        
     def show_class_distribution(self):
         '''Uses df_ attribute to graph class distribution for train and test data.'''
         grouped = self.df_[['train', 'test', 'label']].groupby('label').sum()
@@ -421,25 +447,31 @@ class NeuralNet():
             print("Must enter either bool depending on desired classifier: binary or ternary.")
         
         # create callback
-        weight_callback = LambdaCallback(on_epoch_end=lambda epoch, logs: self.weights_dict.update({epoch:model.get_weights()}))
-
+        weight_callback = LambdaCallback(on_epoch_end=lambda epoch, logs: self.weights_dict.update(
+                                                                                            {epoch:self.model.get_weights()}
+                                                                                            ))
+        log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+        
         # fit model with callback
         self.history = self.model.fit(data_images,
                                  data_labels,
                                  epochs = epochs,
                                  batch_size = batch_size,
                                  validation_split = validation_split,
-                                 callbacks = [weight_callback])
-
-    def get_results(self, graph_name, y_pred=None, y_true=None):
+                                 callbacks = [weight_callback, tensorboard_callback])
+ 
+        
+    def get_results(self, graph_name, num_classes=None, y_pred=None, y_true=None):
         '''
         Takes in model and returns confusion matrix, accuracy, summary table; diagnostics can be chosen, but by default all are returned. If user does not want to wait forever for a model to build, if a param is set to True, will return summary of previously built model. Also should have ability to return graph of loss and accuracy/recall growth across epochs. Don't know if this will have to be segmented via attributes.
         
         Params:
         ---------
-        :graph_name: str - one of the following - 'acc_recall', 'confusion_matrix', 'loss_roc'
+        :graph_name: str - one of the following - 'acc_recall', 'confmat_weights', 'loss_roc'
         :y_pred: generate your own predictions from model attribute.
         :y_true: feed in data from model attribute.
+        :num_classes: for confusion matrix.
         '''
         if graph_name == 'acc_recall':
             model_epochs = self.history.epoch
@@ -491,22 +523,163 @@ class NeuralNet():
             ax2.legend(prop={"size":15})
 
             plt.suptitle(f'{self.model_name} Diagnostics, cont.', size=25)
-        elif graph_name == 'confusion_matrix':
-            fig, ax = plt.subplots(figsize=(6,5))
+        elif graph_name == 'confmat_weights':
+            fig, (ax1, ax2) = plt.subplots(figsize=(13,6))
 
-            data = confusion_matrix(y_true, y_pred)
-            sns.heatmap(data, annot=True, ax=ax)
-            ax.set_xlabel('Predicted Label')
-            ax.set_ylabel('True Label')
-            ax.set_title(f'{self.model_name} Confusion Matrix', size=20)
+            data = confusion_matrix(y_true, y_pred, num_classes=num_classes)
+            sns.heatmap(data, annot=True, ax=ax1)
+            ax1.set_xlabel('Predicted Label')
+            ax1.set_ylabel('True Label')
+            ax1.set_title('Confusion Matrix', size=20)
 
+            # Find sums of absolute changes in weights:
+            diffs = []
+
+            for e in range(len(self.weights_dict)):
+                total_diff = []
+                for l in range(len(self.weights_dict[0])):
+                    if e < len(self.weights_dict)-1:
+                        diff = abs(self.weights_dict[e][l] - self.weights_dict[e+1][l])
+                        total_diff.append(diff.sum())
+                    elif e >= len(self.weights_dict):
+                        break
+                diffs.append(np.array(total_diff).sum())
+           
+            ax2.plot(self.history.epoch[:len(self.weights_dict)-1], diffs[:len(self.weights_dict)-1], lw=3)
+            ax2.plot(self.history.epoch[:len(self.weights_dict)-1], diffs[:len(self.weights_dict)-1], 'ro')
+            ax2.set_xlabel('Epoch Pair')
+            ax2.set_ylabel('Total Difference between all weights')
+            ax2.set_xticks(
+                ticks=self.history.epoch[:len(self.weights_dict)-1], 
+                labels=[(e+1, e+2) for e in self.history.epoch[:len(self.weights_dict)-1]])
+            ax2.set_title('Tracking Changes in Loss every Epoch', size=20)
+            
+            plt.suptitle(f'{self.model_name} Diagnostics, cont.', size=25)
         else:
             print("Must choose one of the following graphs: 'loss_roc', 'acc_recall', 'confusion_matrix'")
 
-    
-    def tensorboard(self):
+    def lime_explainer(self, ternary, num_features=5):
         '''
-        Takes in _____ and launches Tensorboard interface AND/OR returns images taken for previously built model if user does not want to launch interface.
+        Takes in preds and returns map of darkest/lightest images for each class.
+        
+        Params
+        --------
+        :ternary: bool, whether or not we're dealing with binary/ternary classifier (binary = 4 plots, ternary = 6 plots)
         '''
-        return None
+        if ternary == True:
+            nrows = 3
+        elif ternary == False:
+            nrows = 2
+        else: 
+            print('Ternary param must be True or False')
+
+        fig, ax = plt.subplots(ncols=2, nrows=nrows, figsize=(18,20))
+
+        labels = ['normal', 'bacterial', 'viral']
+
+        for r in range(nrows):
+            if nrows == 3:
+                df = self.df_[self.df_['label']==labels[r]]
+
+                minimum = df['gs_sum'].min()
+                darkest = df[df['gs_sum']==minimum]
+                maximum = df['gs_sum'].max()
+                lightest = df[df['gs_sum']==maximum]
+
+                graphs = [darkest, lightest]
+                scores = [minimum, maximum]
+            elif nrows == 2:
+                if r == 0:
+                    # Normal
+                    df = self.df_[self.df_['label']==labels[0]]
+                elif r == 1:
+                    # Pneumonia
+                    df = self.df_[self.df_['label']!=labels[0]]
+
+                minimum = df['gs_sum'].min()
+                darkest = df[df['gs_sum']==minimum]
+                
+                maximum = df['gs_sum'].max()
+                lightest = df[df['gs_sum']==maximum]
+
+                graphs = [darkest, lightest]
+                scores = [minimum, maximum]
+            else:
+                print("Something's wrong here.")
+
+            for c in range(2):
+                d_or_l = None
+
+                if c == 0:
+                    d_or_l = 'Darkest'
+                else:
+                    d_or_l = 'Lightest'
+                # instantiate lime object
+                explainer = lime_image.LimeImageExplainer()
+                
+                base = 'data/chest_xray/'
+                tr_te = None
+                category = None
+                dir_path = base+tr_te+category
+                
+                # Binary Normal data
+                if graphs[c]['label'] == 'normal':
+                    if graphs[c]['train'] == 1:
+                        tr_te = 'train/'
+                        category = 'NORMAL'
+                    elif graphs[c]['test'] == 1:
+                        tr_te = 'test/'
+                        category = 'NORMAL'
+                # Access ternary directories
+                elif graphs[c]['label'] != 'normal':
+                    if graphs[c]['train'] == 1:
+                        tr_te = 'chest_xray_ternary/train/'
+                        if graphs[c]['label'] == 'bacterial':
+                            category = 'BACTERIAL'
+                        elif graphs[c]['label'] == 'viral':
+                            category = 'VIRAL'
+                    elif graphs[c]['test'] == 1:
+                        tr_te = 'chest_xray_ternary/test/'
+                        if graphs[c]['label'] == 'bacterial':
+                            category = 'BACTERIAL'
+                        elif graphs[c]['label'] == 'viral':
+                            category = 'VIRAL'
+                
+                img_gen = ImageDataGenerator(rescale = 1/255.).flow_from_dataframe(graphs[c],
+                                                           directory=dir_path,
+                                                           x_col='filename',
+                                                           y_col='label',
+                                                           target_size=(224, 224),
+                                                           batch_size=1,                      
+                                                           class_mode='categorical')
+                img, label = next(img_gen)
+
+                explanation = explainer.explain_instance(
+                                                        img[0].astype('double'), 
+                                                        self.model.predict, 
+                                                        top_labels=5, 
+                                                        hide_color=0 
+                                                        )
+                temp, mask = explanation.get_image_and_mask(
+                                                            explanation.top_labels[0], 
+                                                            positive_only=False, 
+                                                            num_features=5, 
+                                                            hide_rest=False
+                                                            )
+
+                # Class label
+                # Ternary: {'BACTERIAL': 0, 'NORMAL': 1, 'VIRAL': 2}
+                # Binary: {'NORMAL': 0, 'PNEUMONIA': 1}
+                # Generate prediction for the specific image
+                pred = self.model.predict(img)[0][0] # slicing to just get integer
+                pred_class = self.model.predict_classes(img)[0][0]
+                label = graphs[c]['label'].values[0].upper()
+
+                ax[r][c].imshow(mark_boundaries(temp / 2 + 0.5, mask))
+                ax[r][c].set_title(f'{d_or_l} X-ray Chest Scan\nGS-Score = {scores[c]}\nPredicted Value: {pred.round(2)}\nPredicted Class #: {pred_class}\nActual Class: {label}', 
+                                   size=18)
+                ax[r][c].grid(False)
+                ax[r][c].axis('off')
+
+        fig.tight_layout(pad=4, h_pad=10)
 
