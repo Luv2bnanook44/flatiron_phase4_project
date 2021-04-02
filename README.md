@@ -1,4 +1,5 @@
-# flatiron_phase4_project
+# Classifying X-Ray Images to Predict Pediatric Pneumonia  
+## Using Convolutional Neural Networks  
 ![stjstretch](./img/stjstretch.JPG)
 
 Classifying images of lung X-rays using a Convolutional Neural Network.
