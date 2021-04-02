@@ -20,6 +20,7 @@ from tensorflow.random import set_seed
 
 # Diagnostics/Analysis
 from sklearn.metrics import roc_curve, auc, confusion_matrix
+from tensorflow.keras.callbacks import LambdaCallback
 
 # Set global seed
 set_seed(42)
@@ -89,8 +90,10 @@ class NeuralNet():
         self.ternary_test_labels = None
         
         # Model
-        self.history = None
+        self.model_name = None
         self.model = None
+        self.history = None
+        self.weights_dict = {}
         self.confusion_matrix = None
 
     def preprocess(self, folder='data', rotation_range=0.4, zoom_range=0.4):
@@ -382,13 +385,15 @@ class NeuralNet():
             
             
             
-    def build_model(self, layers, ternary, optimizer, loss, metrics, epochs, batch_size, validation_split):
+    def build_model(self, model_name, layers, ternary, optimizer, loss, metrics, 
+                    epochs, batch_size, validation_split):
         '''
-        Uses in model-ready dataset attribute, returns None, but stores fit model object in the class. If ternary=True, then builds model that distinguishes bacteria vs viral pneumonia.
+        Uses in model-ready dataset attribute, returns None, but stores fit model object in the class. If ternary=True, then builds model that distinguishes normal vs bacterial vs viral pneumonia.
         First layer of network must contain input shape.
         
         params:
         --------
+        :model_name: str - Name of model for tracking purposes. Ex: 'FSM'
         :layers: a list of step functions in desired order, with desired specifications (Ex: [Dense(12, activation='relu', input_shape=(50176,), MaxPooling2D((2, 2)), Dense(1, activation='softmax')])
         :ternary: bool, whether or not you are building a binary/ternary classifier.
         :optimizer: choose one of the following (str): [
@@ -398,37 +403,43 @@ class NeuralNet():
         :batch_size: int; number of bony cliques.
         :validation_split: float; proportion of training data to be siphoned off to use for validation.
         '''
+        self.model_name = model_name
         self.model = Sequential()
         
         for layer in layers:
-            model.add(layer)
+            self.model.add(layer)
         
-        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+        self.model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
         
         if ternary == False:
-            self.history = model.fit(self.binary_train_images,
-                                     self.binary_train_labels,
-                                     epochs = epochs,
-                                     batch_size = batch_size,
-                                     validation_split = validation_split)
-                                     
+            data_images = self.binary_train_images
+            data_labels = self.binary_train_labels
         elif ternary == True:
-            self.history = model.fit(self.ternary_train_images,
-                                     self.ternary_train_labels,
-                                     epochs = epochs,
-                                     batch_size = batch_size,
-                                     validation_split = validation_split)
+            data_images = self.ternary_train_images
+            data_labels = self.ternary_train_labels
         else:
             print("Must enter either bool depending on desired classifier: binary or ternary.")
+        
+        # create callback
+        weight_callback = LambdaCallback(on_epoch_end=lambda epoch, logs: self.weights_dict.update({epoch:model.get_weights()}))
 
-    def get_results(self, graph_name, model_name, y_pred, y_true):
+        # fit model with callback
+        self.history = self.model.fit(data_images,
+                                 data_labels,
+                                 epochs = epochs,
+                                 batch_size = batch_size,
+                                 validation_split = validation_split,
+                                 callbacks = [weight_callback])
+
+    def get_results(self, graph_name, y_pred=None, y_true=None):
         '''
         Takes in model and returns confusion matrix, accuracy, summary table; diagnostics can be chosen, but by default all are returned. If user does not want to wait forever for a model to build, if a param is set to True, will return summary of previously built model. Also should have ability to return graph of loss and accuracy/recall growth across epochs. Don't know if this will have to be segmented via attributes.
         
         Params:
         ---------
         :graph_name: str - one of the following - 'acc_recall', 'confusion_matrix', 'loss_roc'
-        :model_name: str - name of model (Ex: 'FSM')
+        :y_pred: generate your own predictions from model attribute.
+        :y_true: feed in data from model attribute.
         '''
         if graph_name == 'acc_recall':
             model_epochs = self.history.epoch
@@ -453,12 +464,12 @@ class NeuralNet():
             ax2.set_title('Recall\n10 Epochs')
             ax2.legend();
 
-            plt.suptitle(f'{model_name} Diagnostics', size=25)
+            plt.suptitle(f'{self.model_name} Diagnostics', size=25)
         
         elif graph_name == 'loss_roc':
             
             fpr, tpr, thresholds = roc_curve(y_true, y_pred)
-            auc = auc(fpr, tpr).round(2)
+            AUC = auc(fpr, tpr).round(2)
             
             fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(13,6))
 
@@ -473,13 +484,13 @@ class NeuralNet():
             ax1.set_ylabel('Loss', size=15)
             ax1.legend(prop={"size":15})
 
-            ax2.plot(fpr, tpr, label = f'AUC = {auc}', lw=3)
+            ax2.plot(fpr, tpr, label = f'AUC = {AUC}', lw=3)
             ax2.set_title('ROC Curve', size=15)
             ax2.set_xlabel('False Positive Rate', size=15)
             ax2.set_ylabel('False Negative Rate', size=15)
             ax2.legend(prop={"size":15})
 
-            plt.suptitle(f'{model_name} Diagnostics', size=25)
+            plt.suptitle(f'{self.model_name} Diagnostics, cont.', size=25)
         elif graph_name == 'confusion_matrix':
             fig, ax = plt.subplots(figsize=(6,5))
 
@@ -487,11 +498,12 @@ class NeuralNet():
             sns.heatmap(data, annot=True, ax=ax)
             ax.set_xlabel('Predicted Label')
             ax.set_ylabel('True Label')
-            ax.set_title(f'{model_name} Confusion Matrix', size=20)
+            ax.set_title(f'{self.model_name} Confusion Matrix', size=20)
 
         else:
             print("Must choose one of the following graphs: 'loss_roc', 'acc_recall', 'confusion_matrix'")
 
+    
     def tensorboard(self):
         '''
         Takes in _____ and launches Tensorboard interface AND/OR returns images taken for previously built model if user does not want to launch interface.
