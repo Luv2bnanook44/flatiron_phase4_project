@@ -17,12 +17,22 @@ Pnuemonia is one of the leading causes of death in children under five. It is es
 Our data consists of chest x-ray photos of pediatric patients of one to fives years old from Guangzhou Women and Children's Medical Center, Guangzhou. The data is split into 2 main folders, test and train and then further split into NORMAL or PNUEMONIA. This data in its unprocessed form can be found here: [kaggle data](https://www.kaggle.com/paultimothymooney/chest-xray-pneumonia)
 ![proj4data](./img/proj4data.JPG)
 
+This is a visual breakdown of our data where the green line indicates the split of the distribution of training and test data.
+
 ## Methods
 Our methods involve creating a binary classification convolutional nueral networks. We go through an iterative model process where the model is tweaked after each cycle to perform better than the last. Our target is reducing false negatives and we evaluate that success based on our recall, loss and accuracy metrics. 
 
 
 ## Results
 ![conf](./img/conf.JPG)
+
+98% recall - accurately predicted pneumonia in 386 out of 390 cases
+
+High rate of predicting pneumonia in patients with normal lungs
+
+F1 score - 83%
+
+Has only four false negatives
 
 ## Conclusions
 Final Model
