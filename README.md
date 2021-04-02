@@ -16,9 +16,10 @@ Pnuemonia is one of the leading causes of death in children under five. It is es
 ## Data
 Our data consists of chest x-ray photos of pediatric patients of one to fives years old from Guangzhou Women and Children's Medical Center, Guangzhou. The data is split into 2 main folders, test and train and then further split into NORMAL or PNUEMONIA. This data in its unprocessed form can be found here: [kaggle data](https://www.kaggle.com/paultimothymooney/chest-xray-pneumonia)  
 NOTE: In order to run this notebook, your file structure must look like the following:  
-    +---chest_xray_ternary
-    |   +---test
-    |   |   +---NORMAL
+~~~
+    +---chest_xray_ternary  
+    |   +---test  
+    |   |   +---NORMAL  
     |   |   \---PNEUMONIA
     |   |       +---BACTERIAL
     |   |       \---VIRAL
@@ -33,6 +34,8 @@ NOTE: In order to run this notebook, your file structure must look like the foll
     \---train
         +---NORMAL
         \---PNEUMONIA
+~~~ 
+
 ![proj4data](./img/proj4data.JPG)
 
 This is a visual breakdown of our data where the green line indicates the split of the distribution of training and test data.
