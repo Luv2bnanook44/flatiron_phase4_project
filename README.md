@@ -41,9 +41,9 @@ Final Model
  
 
 ### Next Steps
-
-
-## For More Information
+ 1. We would like to boost the signal of the negative class - augment the ‘normal’ X-Ray image data
+ 2. We would also like to implement transfer learning, where would find a pretrained model to to transfer its knowledge to ours
+ 3. We would like to implement a ternary classification model that would distinguish between, normal, viral or bacterial pneumonia
 
 ## Repository Structure
 ```
