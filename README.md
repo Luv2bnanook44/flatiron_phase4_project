@@ -24,7 +24,8 @@ Our methods involve creating a binary classification convolutional nueral networ
 
 ##Modeling  
 The final model iteration was a Convolutional Neural Net with the following architecture:  
-```Conv2D(32, (3, 3), activation='tanh',input_shape=(224 , 224, 1)), //convolutional input layer with hyperbolic tangent activation function
+~~~
+	    Conv2D(32, (3, 3), activation='tanh',input_shape=(224 , 224, 1)), //convolutional input layer with hyperbolic tangent activation function
             MaxPooling2D((2, 2)), //pooling layer
             Conv2D(32, (4, 4), activation='relu'), //convolutional layer with a 4x4 matrix transformer
             MaxPooling2D((2, 2), padding = 'same'), //pooling layer with padding
@@ -34,8 +35,9 @@ The final model iteration was a Convolutional Neural Net with the following arch
             Flatten(), //flattening layer
 	    Dense(128, activation = 'relu') //Densely-connected layer with 128 neurons and ReLu activation
             Dense(64, activation='relu'), //Densely-connected layer with 64 neurons and ReLu activation
-            Dense(1, activation='sigmoid')] //output layer with sigmoid activation```
-
+            Dense(1, activation='sigmoid')] //output layer with sigmoid activation  
+~~~
+  
 ## Results
 ![conf](./img/conf.JPG)
 
