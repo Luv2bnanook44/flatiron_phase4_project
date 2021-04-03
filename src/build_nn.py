@@ -462,7 +462,7 @@ class NeuralNet():
                                  callbacks = [weight_callback, tensorboard_callback])
  
         
-    def get_results(self, graph_name, num_classes=None, y_pred=None, y_true=None):
+    def get_results(self, graph_name, num_classes=None, y_pred=None, y_true=None, recall_type='recall'):
         '''
         Takes in model and returns confusion matrix, accuracy, summary table; diagnostics can be chosen, but by default all are returned. If user does not want to wait forever for a model to build, if a param is set to True, will return summary of previously built model. Also should have ability to return graph of loss and accuracy/recall growth across epochs. Don't know if this will have to be segmented via attributes.
         
@@ -471,12 +471,13 @@ class NeuralNet():
         :graph_name: str - one of the following - 'acc_recall', 'confmat_weights', 'loss_roc'
         :y_pred: generate your own predictions from model attribute.
         :y_true: feed in data from model attribute.
+        :recall_type: recall is touchy for some reason. look at model history and see which type of recall it wants.
         :num_classes: for confusion matrix.
         '''
         if graph_name == 'acc_recall':
             model_epochs = self.history.epoch
-            model_recall_train = self.history.history['recall']
-            model_recall_val = self.history.history['val_recall']
+            model_recall_train = self.history.history[recall_type] # don't know why this isn't regular recall...
+            model_recall_val = self.history.history['val_'+recall_type]
             model_accuracy_train = self.history.history['accuracy']
             model_accuracy_val = self.history.history['val_accuracy']
 
@@ -523,8 +524,9 @@ class NeuralNet():
             ax2.legend(prop={"size":15})
 
             plt.suptitle(f'{self.model_name} Diagnostics, cont.', size=25)
+            
         elif graph_name == 'confmat_weights':
-            fig, (ax1, ax2) = plt.subplots(figsize=(13,6))
+            fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(13,6))
 
             data = confusion_matrix(y_true, y_pred, num_classes=num_classes)
             sns.heatmap(data, annot=True, ax=ax1)
@@ -558,13 +560,14 @@ class NeuralNet():
         else:
             print("Must choose one of the following graphs: 'loss_roc', 'acc_recall', 'confusion_matrix'")
 
-    def lime_explainer(self, ternary, num_features=5):
+    def lime_explainer(self, ternary, num_features=5, top_labels=5):
         '''
         Takes in preds and returns map of darkest/lightest images for each class.
         
         Params
         --------
         :ternary: bool, whether or not we're dealing with binary/ternary classifier (binary = 4 plots, ternary = 6 plots)
+        :num_features: int, number of lime aspects to highlight on image.
         '''
         if ternary == True:
             nrows = 3
@@ -657,13 +660,13 @@ class NeuralNet():
                 explanation = explainer.explain_instance(
                                                         img[0].astype('double'), 
                                                         self.model.predict, 
-                                                        top_labels=5, 
+                                                        top_labels=top_labels, 
                                                         hide_color=0 
                                                         )
                 temp, mask = explanation.get_image_and_mask(
                                                             explanation.top_labels[0], 
                                                             positive_only=False, 
-                                                            num_features=5, 
+                                                            num_features=num_features, 
                                                             hide_rest=False
                                                             )
 
@@ -672,6 +675,7 @@ class NeuralNet():
                 # Binary: {'NORMAL': 0, 'PNEUMONIA': 1}
                 # Generate prediction for the specific image
                 pred = self.model.predict(img)[0][0] # slicing to just get integer
+                # alternative: np.argmax(model.predict(x), axis=-1)
                 pred_class = self.model.predict_classes(img)[0][0]
                 label = graphs[c]['label'].values[0].upper()
 
