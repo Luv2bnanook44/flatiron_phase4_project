@@ -4,6 +4,9 @@ plt.style.use('seaborn')
 import numpy as np
 import pandas as pd
 import seaborn as sns
+# For lime deprecation warnings
+import warnings
+warnings.filterwarnings("ignore")
 
 # image manipulation
 from PIL import Image as im
@@ -13,7 +16,7 @@ from keras.preprocessing.image import load_img, ImageDataGenerator
 # keras/tensorflow
 from keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, BatchNormalization
 from tensorflow.keras import metrics
 from keras.layers.advanced_activations import LeakyReLU
 from tensorflow.random import set_seed
@@ -33,7 +36,9 @@ set_seed(42)
 
 class NeuralNet():
     '''
-    Takes in ___ and provides a slew of methods to preprocess data, visualize data, model data, and tune model.
+    Provides a slew of methods to preprocess data, visualize data, model data, and tune model.
+    
+    Instantiate class by assigning to a variable, then run preprocessing method and .build_model().
     '''
     def __init__(self):
         
@@ -487,14 +492,14 @@ class NeuralNet():
             ax1.plot(model_epochs, model_accuracy_val, linestyle = '--', label = 'Validation Data', lw=3)
             ax1.set_xlabel("Epoch", size=15)
             ax1.set_ylabel("Accuracy", size=15)
-            ax1.set_title('Accuracy\n10 Epochs')
+            ax1.set_title(f'Accuracy\n{len(model_epochs)} Epochs')
             ax1.legend();
 
             ax2.plot(model_epochs, model_recall_train, label = 'Training Data', lw=3)
             ax2.plot(model_epochs, model_recall_val, linestyle = '--', label = 'Validation Data', lw=3)
             ax2.set_xlabel("Epoch", size=15)
             ax2.set_ylabel("Recall", size=15)
-            ax2.set_title('Recall\n10 Epochs')
+            ax2.set_title(f'Recall\n{len(model_epochs)} Epochs')
             ax2.legend();
 
             plt.suptitle(f'{self.model_name} Diagnostics', size=25)
@@ -551,10 +556,9 @@ class NeuralNet():
             ax2.plot(self.history.epoch[:len(self.weights_dict)-1], diffs[:len(self.weights_dict)-1], 'ro')
             ax2.set_xlabel('Epoch Pair')
             ax2.set_ylabel('Total Difference between all weights')
-            ax2.set_xticks(
-                ticks=self.history.epoch[:len(self.weights_dict)-1], 
-                labels=[(e+1, e+2) for e in self.history.epoch[:len(self.weights_dict)-1]])
-            ax2.set_title('Tracking Changes in Loss every Epoch', size=20)
+            ax2.set_xticks(self.history.epoch[:len(self.weights_dict)-1])
+            ax2.set_xticklabels([(e+1, e+2) for e in self.history.epoch[:len(self.weights_dict)-1]])
+            ax2.set_title('Tracking Changes in Weights Across Epochs', size=20)
             
             plt.suptitle(f'{self.model_name} Diagnostics, cont.', size=25)
         else:
@@ -621,32 +625,33 @@ class NeuralNet():
                 explainer = lime_image.LimeImageExplainer()
                 
                 base = 'data/chest_xray/'
-                tr_te = None
-                category = None
-                dir_path = base+tr_te+category
+                tr_te = 'UNKNOWN' # just as filler
+                category = 'UNKNOWN'
                 
                 # Binary Normal data
-                if graphs[c]['label'] == 'normal':
-                    if graphs[c]['train'] == 1:
+                if graphs[c]['label'].any() == 'normal':
+                    if graphs[c]['train'].any() == 1:
                         tr_te = 'train/'
                         category = 'NORMAL'
-                    elif graphs[c]['test'] == 1:
+                    elif graphs[c]['test'].any() == 1:
                         tr_te = 'test/'
                         category = 'NORMAL'
                 # Access ternary directories
-                elif graphs[c]['label'] != 'normal':
-                    if graphs[c]['train'] == 1:
+                elif graphs[c]['label'].any() != 'normal':
+                    if graphs[c]['train'].any() == 1:
                         tr_te = 'chest_xray_ternary/train/'
-                        if graphs[c]['label'] == 'bacterial':
+                        if graphs[c]['label'].any() == 'bacterial':
                             category = 'BACTERIAL'
-                        elif graphs[c]['label'] == 'viral':
+                        elif graphs[c]['label'].any() == 'viral':
                             category = 'VIRAL'
-                    elif graphs[c]['test'] == 1:
+                    elif graphs[c]['test'].any() == 1:
                         tr_te = 'chest_xray_ternary/test/'
-                        if graphs[c]['label'] == 'bacterial':
+                        if graphs[c]['label'].any() == 'bacterial':
                             category = 'BACTERIAL'
-                        elif graphs[c]['label'] == 'viral':
+                        elif graphs[c]['label'].any() == 'viral':
                             category = 'VIRAL'
+                
+                dir_path = base+tr_te+category
                 
                 img_gen = ImageDataGenerator(rescale = 1/255.).flow_from_dataframe(graphs[c],
                                                            directory=dir_path,
