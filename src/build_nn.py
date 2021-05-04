@@ -36,23 +36,25 @@ set_seed(42)
 
 class NeuralNet():
     '''
-    Provides a slew of methods to preprocess data, visualize data, model data, and tune model.
-    
-    Instantiate class by assigning to a variable, then run preprocessing method and .build_model().
+    Provides a slew of methods to preprocess data,
+    visualize data, model data, and tune model.
+
+    Instantiate class by assigning to a variable, then run preprocessing
+    method and .build_model().
     '''
     def __init__(self):
-        
+
         # Directory paths
-        
-            # normal scans
+
+        # normal scans
         self.train_normal_path = '/chest_xray/train/NORMAL/'
         self.test_normal_path = '/chest_xray/test/NORMAL/'
-            # binary
+        # binary
         self.binary_train_path = '/chest_xray/train/'
         self.binary_test_path = '/chest_xray/test/'
         self.binary_train_pneumonia_path = '/chest_xray/train/PNEUMONIA/'
         self.binary_test_pneumonia_path = '/chest_xray/test/PNEUMONIA/'
-            # ternary
+        # ternary
         self.ternary_train_path = '/chest_xray/chest_xray_ternary/train/'
         self.ternary_test_path = '/chest_xray/chest_xray_ternary/test/'
         self.ternary_train_bacterial_path = '/chest_xray/chest_xray_ternary/train/BACTERIAL/'
@@ -67,17 +69,16 @@ class NeuralNet():
         self.img_test_normal = []
         self.img_test_bacterial = []
         self.img_test_viral = []
-        
+
         # Pandas Dataframe of images and info
         self.df_ = None
-        
+
         # Image gens
         self.binary_train_gen = None
         self.binary_test_gen = None
         self.ternary_train_gen = None
         self.ternary_test_gen = None
-        
-       
+
         # List of array-formatted images
         self.file_train_normal = []
         self.file_train_bacterial = []
@@ -85,7 +86,7 @@ class NeuralNet():
         self.file_test_normal = []
         self.file_test_bacterial = []
         self.file_test_viral = []
-        
+
         # List of array-formatted images
         self.array_train_normal = []
         self.array_train_bacterial = []
@@ -93,7 +94,7 @@ class NeuralNet():
         self.array_test_normal = []
         self.array_test_bacterial = []
         self.array_test_viral = []
-        
+
         # List of gs_sums
         self.sums_train_normal = []
         self.sums_train_bacterial = []
@@ -101,18 +102,18 @@ class NeuralNet():
         self.sums_test_normal = []
         self.sums_test_bacterial = []
         self.sums_test_viral = []
-        
+
         # List of model data
         self.binary_train_images = None
         self.binary_train_labels = None
         self.binary_test_images = None
         self.binary_test_labels = None
-        
+
         self.ternary_train_images = None
         self.ternary_train_labels = None
         self.ternary_test_images = None
         self.ternary_test_labels = None
-        
+
         # Model
         self.model_name = None
         self.model = None
@@ -127,9 +128,9 @@ class NeuralNet():
         - array list
         - sum list
         - data to be inserted into model
-        
+
         NOTE: MUST have directory structure as follows...
-        
+
         folder
             >chest_xray
                 >train
@@ -151,25 +152,25 @@ class NeuralNet():
                             >VIRAL
         '''
         # Using same normal data
-        train_normal=os.listdir(folder+self.train_normal_path)
-        test_normal=os.listdir(folder+self.test_normal_path)
-        
+        train_normal = os.listdir(folder+self.train_normal_path)
+        test_normal = os.listdir(folder+self.test_normal_path)
+
         # Binary data
-        train_pneumonia=os.listdir(folder+self.binary_train_pneumonia_path)
-        test_pneumonia=os.listdir(folder+self.binary_test_pneumonia_path)
-        
+        train_pneumonia = os.listdir(folder+self.binary_train_pneumonia_path)
+        test_pneumonia = os.listdir(folder+self.binary_test_pneumonia_path)
+
         # Ternary data
-        train_bacterial=os.listdir(folder+self.ternary_train_bacterial_path)
-        train_viral=os.listdir(folder+self.ternary_train_viral_path)
-        test_bacterial=os.listdir(folder+self.ternary_test_bacterial_path)
-        test_viral=os.listdir(folder+self.ternary_test_viral_path)
+        train_bacterial = os.listdir(folder+self.ternary_train_bacterial_path)
+        train_viral = os.listdir(folder+self.ternary_train_viral_path)
+        test_bacterial = os.listdir(folder+self.ternary_test_bacterial_path)
+        test_viral = os.listdir(folder+self.ternary_test_viral_path)
         
         print('Image paths loaded from folder(s)...')
         
         # Create dataframes for each permutation of image
         
         filenames = [self.file_train_bacterial, self.file_train_viral, self.file_train_normal,
-                    self.file_test_bacterial, self.file_test_viral, self.file_test_normal]
+                     self.file_test_bacterial, self.file_test_viral, self.file_test_normal]
         
         arrays = [self.array_train_bacterial, self.array_train_viral, self.array_train_normal,
                   self.array_test_bacterial, self.array_test_viral, self.array_test_normal]
@@ -199,42 +200,42 @@ class NeuralNet():
         
         # Generate dataframe with images, label info, and grayscale sums
         
-        train_bacterial_resized=pd.DataFrame(images[0], columns=['image'])
+        train_bacterial_resized = pd.DataFrame(images[0], columns=['image'])
         train_bacterial_resized['label'] = 'bacterial'
         train_bacterial_resized['train'] = 1
         train_bacterial_resized['test'] = 0
         train_bacterial_resized['gs_sum'] = self.sums_train_bacterial
         train_bacterial_resized['filename'] = self.file_train_bacterial
         
-        train_viral_resized=pd.DataFrame(images[1], columns=['image'])
+        train_viral_resized = pd.DataFrame(images[1], columns=['image'])
         train_viral_resized['label'] = 'viral'
         train_viral_resized['train'] = 1
         train_viral_resized['test'] = 0
         train_viral_resized['gs_sum'] = self.sums_train_viral
         train_viral_resized['filename'] = self.file_train_viral
         
-        train_normal_resized=pd.DataFrame(images[2], columns=['image'])
+        train_normal_resized = pd.DataFrame(images[2], columns=['image'])
         train_normal_resized['label'] = 'normal'
         train_normal_resized['train'] = 1
         train_normal_resized['test'] = 0
         train_normal_resized['gs_sum'] = self.sums_train_normal
         train_normal_resized['filename'] = self.file_train_normal
         
-        test_bacterial_resized=pd.DataFrame(images[3], columns=['image'])
+        test_bacterial_resized = pd.DataFrame(images[3], columns=['image'])
         test_bacterial_resized['label'] = 'bacterial'
         test_bacterial_resized['train'] = 0 
         test_bacterial_resized['test'] = 1
         test_bacterial_resized['gs_sum'] = self.sums_test_bacterial
         test_bacterial_resized['filename'] = self.file_test_bacterial
         
-        test_viral_resized=pd.DataFrame(images[4], columns=['image'])
+        test_viral_resized = pd.DataFrame(images[4], columns=['image'])
         test_viral_resized['label'] = 'viral'
         test_viral_resized['train'] = 0
         test_viral_resized['test'] = 1
         test_viral_resized['gs_sum'] = self.sums_test_viral
         test_viral_resized['filename'] = self.file_test_viral
         
-        test_normal_resized=pd.DataFrame(images[5], columns=['image'])
+        test_normal_resized = pd.DataFrame(images[5], columns=['image'])
         test_normal_resized['label'] = 'normal'
         test_normal_resized['train'] = 0
         test_normal_resized['test'] = 1
@@ -245,19 +246,19 @@ class NeuralNet():
         self.df_ = pd.concat([train_bacterial_resized, train_viral_resized, train_normal_resized, 
                               test_bacterial_resized, test_viral_resized, test_normal_resized], axis=0)
         print('Stored dataframe of data in .df_ attribute...')
-        
+
         # Generate images for modeling (batch size matches length of full dataset to allow for adjustable batch sizes later
-        
+
         train_batch_size = len(self.img_train_normal)+len(self.img_train_bacterial)+len(self.img_train_viral)
         test_batch_size = len(self.img_test_normal)+len(self.img_test_bacterial)+len(self.img_test_viral)
-        
+
         # BINARY
         self.binary_test_gen = ImageDataGenerator(rescale = 1/255.).flow_from_directory(folder+self.binary_test_path,
                                             target_size=(224, 224),
                                             batch_size=test_batch_size,                       
                                             class_mode='binary')
 
-        
+
         self.binary_train_gen = ImageDataGenerator(rescale = 1/255., horizontal_flip=True, \
                                               rotation_range=rotation_range, \
                                               zoom_range=zoom_range).flow_from_directory(folder+self.binary_train_path,
@@ -691,4 +692,3 @@ class NeuralNet():
                 ax[r][c].axis('off')
 
         fig.tight_layout(pad=4, h_pad=10)
-
